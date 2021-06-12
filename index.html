@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head><title>弾幕テスト</title></head>
+<body>
+  <canvas width="800" height="800" style="width: 800px; height: 800px;" onmousemove="onMouseMove(event)"></canvas>
+  <div><button onclick="init()">全消去</button> <span>frame:</span> <span id="frame">-</span> <span>obj:</span> <span id="obj">-</span></div>
+  <button onclick="A()">A(自機狙い)</button><button onclick="B()">B(敵固定)</button><button onclick="C()">C(ばらまき)</button><button onclick="D()">D(ワインダー)</button>
+  <script>
+    var context = document.querySelector("canvas").getContext("2d");
+    var objectSet;
+    var player;
+    var isGameOver;
+    var frame;
+    function init() {
+      objectSet = new Set();
+      player = {type: 'P', c: 'red', x: -100, y: -100, r: 10};
+      isGameOver = false;
+      frame = 0;
+    }
+    function addObject(obj) {
+      if (objectSet.size < 1000) objectSet.add(obj);
+    }
+    function A() {
+      addObject({type: 'A', c: 'blue', x: 400, y: 100, r: 20});
+    }
+    function B() {
+      addObject({type: 'B', c: 'yellow', x: 400, y: 100, r: 20});
+    }
+    function C() {
+      addObject({type: 'C', c: 'green', x: 400, y: 100, r: 20});
+    }
+    function D() {
+      addObject({type: 'D', c: 'purple', x: 400, y: 100, r: 20, rad: Math.PI / 2});
+    }
+    init();
+    A();
+    B();
+    C();
+    D();
+    function drawRect(color, x, y, w, h) {
+      context.fillStyle = color;
+      context.fillRect(x, y, w, h);
+    }
+    function drawObject(obj) {
+      context.fillStyle = obj.c || 'white';
+      context.beginPath();
+      context.arc(obj.x, obj.y, obj.r, 0, 2 * Math.PI);
+      context.closePath();
+      context.fill();
+    }
+    function drawCanvas() {
+      drawRect("black", 0, 0, 800, 800);
+      drawObject(player);
+      objectSet.forEach(obj => drawObject(obj));
+      if (isGameOver) drawRect("rgba(255, 0, 0, 0.5)", 0, 0, 800, 800);
+    }
+    function update(object) {
+      if (!object.t) object.t = 0;
+      if (object.type === 'A') {
+        if (object.t % 100 == 0) {
+          var rad = Math.PI * 2 * Math.random();
+          var vx = Math.cos(rad);
+          var vy = Math.sin(rad);
+          object.v = {x: vx, y: vy, a: 2};
+        }
+        if (object.t % 60 == 55 || object.t % 60 == 50 || object.t % 60 == 45 || object.t % 60 == 40 || object.t % 60 == 35 || object.t % 60 == 30 || object.t % 60 == 25) {
+          var tx = player.x - object.x;
+          var ty = player.y - object.y;
+          var tt = Math.sqrt(tx * tx + ty * ty);
+          addObject({type: 'Q', x: object.x, y: object.y, r: 10, v: {x: tx / tt, y: ty / tt, a: 5}});
+        }
+        object.v.a *= 0.98;
+      }
+      if (object.type === 'B') {
+        if (object.t % 120 == 0) {
+          var rad = Math.PI * 2 * Math.random();
+          var vx = Math.cos(rad);
+          var vy = Math.sin(rad);
+          object.v = {x: vx, y: vy, a: 4};
+        }
+        if (object.t % 120 == 119) {
+          for (var i = 0; i < 30; i++) {
+            var rad = Math.PI * 2 * i / 29;
+            var vx = Math.cos(rad);
+            var vy = Math.sin(rad);
+            var px = object.x + vx * 40;
+            var py = object.y + vy * 40;
+            addObject({type: 'Q', x: px, y: py, r: 10, v: {x: vx, y: vy, a: 3}});
+          }
+        }
+        object.v.a *= 0.96;
+      }
+      if (object.type === 'C') {
+        if (object.t % 80 == 0) {
+          var rad = Math.PI * 2 * Math.random();
+          var vx = Math.cos(rad);
+          var vy = Math.sin(rad);
+          object.v = {x: vx, y: vy, a: 0.8};
+        }
+        if (object.t % 120 > 60 && object.t % 3 == 0) {
+          var rad = Math.PI * 2 * Math.random();
+          var vx = Math.cos(rad);
+          var vy = Math.sin(rad);
+          addObject({type: 'Q', x: object.x, y: object.y, r: 10, v: {x: vx, y: vy, a: 4}});
+        }
+        object.v.a *= 0.98;
+      }
+      if (object.type === 'D') {
+        if (object.t % 80 == 0) {
+          var rad = Math.PI * 2 * Math.random();
+          var vx = Math.cos(rad);
+          var vy = Math.sin(rad);
+          object.v = {x: vx, y: vy, a: 2};
+        }
+        if (object.t % 4 == 0) {
+          var d = 0.4;
+          addObject({type: 'Q', x: object.x, y: object.y, r: 10, v: {x: Math.cos(object.rad + d), y: Math.sin(object.rad + d), a: 4}});
+          addObject({type: 'Q', x: object.x, y: object.y, r: 10, v: {x: Math.cos(object.rad - d), y: Math.sin(object.rad - d), a: 4}});
+        }
+        object.v.a *= 0.99;
+      }
+      if (object.type !== 'P') {
+        object.x += object.v.x * object.v.a;
+        object.y += object.v.y * object.v.a;
+      }
+      if (object.type === 'D') {
+        if (object.y < 50) object.y = 50;
+        if (object.y > 150) object.y = 150;
+        if (object.x < 300) object.x = 300;
+        if (object.x > 500) object.x = 500;
+      } else if (object.type !== 'Q') {
+        if (object.y < 0) object.y = 0;
+        if (object.y > 800) object.y = 800;
+        if (object.x < 0) object.x = 0;
+        if (object.x > 800) object.x = 800;
+      }
+      object.t++;
+    }
+    function isCollision(a, b) {
+      var dx = a.x - b.x;
+      var dy = a.y - b.y;
+      var dr = a.r + b.r
+      return (dr * dr) > (dx * dx + dy * dy);
+    }
+    var fps = 60;
+    function loop() {
+      setTimeout(function() {
+        document.querySelector('#frame').innerText = frame;
+        document.querySelector('#obj').innerText = objectSet.size;
+        objectSet.forEach(obj => update(obj));
+        isGameOver = false;
+        objectSet.forEach(obj => {
+          if (isCollision(obj, player)) isGameOver = true;
+          if (obj.x < -10 || obj.x > 810 || obj.y < -10 || obj.y > 810) objectSet.delete(obj);
+        });
+        drawCanvas();
+        frame++;
+        requestAnimationFrame(loop);
+      }, 1000 / fps);
+    }
+    loop();
+    function onMouseMove(e) {
+      var rect = e.target.getBoundingClientRect()
+      player.x = e.clientX - rect.left;
+      player.y = e.clientY - rect.top;
+    }
+  </script>
+</body>
+</html>
